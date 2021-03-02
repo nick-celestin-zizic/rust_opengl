@@ -1,7 +1,25 @@
 extern crate gl;
 use gl::glutin as initgl;
 
-fn main() {
+use gl::program::Program;
+fn compile_shader (display : &gl::Display, name : &str) -> Program {
+    let vertex_name   = String::from("src/shaders/vert_") + name + ".glsl";
+    let fragment_name = String::from("src/shaders/frag_") + name + ".glsl";
+
+    fn get_src (name : &String) -> String {
+        let path = std::path::Path::new(name);
+        return std::fs::read_to_string(path)
+            .expect(&format!("could not load shader '{}'", name)[..]);
+    }
+
+    let vertex_src   = get_src(&vertex_name);
+    let fragment_src = get_src(&fragment_name);
+
+    return gl::Program::from_source(display, &vertex_src[..], &fragment_src[..], None)
+        .expect(&format!("could not compile shader '{}'", name)[..]);
+}
+
+fn main () {
     let (display, event_loop) = {
         use initgl::*;
 
@@ -31,34 +49,10 @@ fn main() {
     let vertex_buffer = gl::VertexBuffer::new(&display, &shape)
         .expect("failed to create vertex buffer");
 
-    use gl::index::{NoIndices, PrimitiveType::TrianglesList};
-    let indices = NoIndices(TrianglesList);
-
-    let vertex_shader_src = r#"
-        #version 140
-        in vec2 position;
-        uniform float t;
-        void main() {
-            vec2 pos = position;
-            pos.x += t;
-            gl_Position = vec4(pos, 0.0, 1.0);
-        }
-    "#;
-
-    let fragment_shader_src = r#"
-        #version 140
-        out vec4 color;
-        void main() {
-            color = vec4(1.0, 0.0, 0.0, 1.0);
-        }
-    "#;
-
-    let program = gl::Program::from_source(
-        &display, vertex_shader_src, fragment_shader_src, None)
-        .expect("could not create shader program");
-
+    let program = compile_shader(&display, "triangle");
+    
     let mut t : f32 = -0.5;
-    let mut dt : f32 = std::time::Instant::now().elapsed().as_secs_f32();
+    //let mut dt : f32 = std::time::Instant::now().elapsed().as_secs_f32();
     event_loop.run(move |event, _, control_flow| {
         use initgl::event_loop::ControlFlow::*;
         use initgl::event::*;
@@ -75,32 +69,56 @@ fn main() {
             _ => ()
         }
 
-        dt -= std::time::Instant::now().elapsed().as_secs_f32();
-        t += dt;
-        if t > 0.5 {
-            t = -0.5;
-        }
+        //dt -= std::time::Instant::now().elapsed().as_secs_f32();
+        t += 0.0002;
 
         use gl::Surface;
         let mut frame = display.draw();
         frame.clear_color(0.0, 1.0, 1.0, 1.0);
 
-        let uniforms = gl::uniform! {
-            matrix : [
-                [1.0, 0.0, 0.0, 0.0],
-                [0.0, 1.0, 0.0, 0.0],
-                [0.0, 0.0, 1.0, 0.0],
-                [ t , 0.0, 0.0, 1.0f32],
-            ]
+        let matrix = [
+                [ t.cos(), t.sin(), 0.0, 0.0],
+                [-t.sin(), t.cos(), 0.0, 0.0],
+                [0.0,      0.0,     1.0, 0.0],
+                [0.0,      0.0,     0.0, 1.0f32],
+        ];
+
+        let perspective = {
+            let (width, height) = frame.get_dimensions();
+            let aspect_ratio = height as f32 / width as f32;
+
+            let fov   : f32 = 3.141592 / 3.0;
+            let zfar  : f32 = 1024.0;
+            let znear : f32 = 0.1;
+
+            let f = 1.0 / (fov / 2.0).tan();
+
+            [[f * aspect_ratio, 0.0, 0.0                           , 0.0],
+             [0.0             , f  , 0.0                           , 0.0],
+             [0.0             , 0.0, (zfar+znear)/(zfar-znear)     , 1.0],
+             [0.0             , 0.0, -(2.0*zfar*znear)/(zfar-znear), 0.0]]
         };
 
-        println!("t is {}", t);
-        
+        let light = [-1.0, 0.4, 0.9f32];
+
+        let _params = gl::DrawParameters {
+            depth : gl::Depth {
+                test  : gl::draw_parameters::DepthTest::IfLess,
+                write : true,
+                .. Default::default()
+            },
+            .. Default::default()
+        };
+
+        use gl::index::*;
         frame.draw(&vertex_buffer,
-                   &indices,
+                   &NoIndices(PrimitiveType::TrianglesList),
                    &program,
-                   &uniforms,
-                   &Default::default()).unwrap();
+                   &gl::uniform! { matrix : matrix,
+                                   perspective : perspective,
+                                   u_light : light
+                   },
+                   &Default::default()).expect("triangle fucked up");
         
         frame.finish().expect("could not swap buffers");
     });
