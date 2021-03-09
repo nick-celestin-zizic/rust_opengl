@@ -1,5 +1,5 @@
 [package]
-name = "opengl"
+name    = "game"
 version = "0.1.0"
 authors = ["Nick C. Zizic <nix509@gmail.com>"]
 edition = "2018"
@@ -7,5 +7,8 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-gl  = {package = "glium",  version = "0.29.0"}
+regex = "1.4.3"
+glium = "0.29.0"
 model_parser = {package = "nom-obj", git = "https://github.com/dwerner/nom-obj", version = "0.2.0"}
+image = "0.23.10"
+

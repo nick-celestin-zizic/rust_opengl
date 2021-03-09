@@ -1,11 +1,8 @@
-#![allow(dead_code)]
-pub type Vector2 = [f32; 2];
-pub type Vector3 = [f32; 3];
-pub type Vector4 = [f32; 4];
+use crate::types::*;
 
-pub type Matrix4 = [[f32; 4]; 4];
 pub trait Matrix4Traits {
-    fn view(position : Vector3, direction : Vector3, up : Vector3) -> Matrix4;
+    fn view(position : Vector3, direction : Vector3, up : Vector3) -> Self;
+    fn identity() -> Self;
 }
 
 impl Matrix4Traits for Matrix4 {
@@ -43,30 +40,10 @@ impl Matrix4Traits for Matrix4 {
             [p[0]     , p[1], p[2], 1.0],
         ]
     }
-}
-
-#[derive(Copy, Clone, Debug)]
-pub struct Vertex {
-    pub position   : Vector4,
-    pub texture    : Vector3,
-    pub texture_id : u32,
-    pub normal     : Vector3,
-}
-
-type GLTuple4 = (f32, f32, f32, f32);
-type GLTuple3 = (f32, f32, f32);
-impl Vertex {
-    pub fn from((v, vt, vn) : (GLTuple4, GLTuple3, GLTuple3)) -> Vertex {
-        //TODO do mtl stuff and hook up texture ids
-        Vertex { position   : [ v.0,  v.1,  v.2, v.3],
-                 normal     : [vn.0, vn.1, vn.2],
-                 texture    : [vt.0, vt.1, vt.2],
-                 texture_id : 0 }
+    fn identity() -> Matrix4 {
+        [[1.0, 0.0, 0.0, 0.0],
+         [0.0, 1.0, 0.0, 0.0],
+         [0.0, 0.0, 1.0, 0.0],
+         [0.0, 0.0, 0.0, 1.0]]
     }
 }
-
-
-
-
-
-
