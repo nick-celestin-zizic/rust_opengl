@@ -10,6 +10,10 @@ pub use vertex::*;
 pub mod model;
 pub use model::*;
 
+#[macro_use]
+pub mod heap_array;
+pub use heap_array::*;
+
 
 pub type Maybe<T> = Result<T, Box<dyn std::error::Error>>;
 
@@ -23,30 +27,23 @@ pub type Matrix4 = [[f32; 4]; 4];
 #[derive(Copy, Clone, Debug)]
 pub struct Vertex {
     pub position   : Vector4,
-    pub uvw        : Vector3,
+    pub uv         : Vector3,
     pub normal     : Vector3,
 }
 
 #[derive(Clone, Debug)]
 pub struct Mesh {
-    pub vertices : Vec<Vertex>,
-    pub indices  : Vec<u16>
-}
-
-#[derive(/*Clone, */Debug)]
-pub struct Model {
     pub filename   : &'static str,
-    pub model_mat  : Matrix4,
-    pub world_mat  : Matrix4,
-    pub mesh       : Mesh,
-    pub texture_id : u16
+    pub texture_id : u16,
+    pub vertices   : Vec<Vertex>,
+    pub indices    : Vec<u16>,
+    pub loaded     : bool,
 }
 
 //TODO replace Vecs with HeapArrays
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct HeapArray<T> {
     pub data  : Box<[T]>,
     pub count : u64,
 }
-
 

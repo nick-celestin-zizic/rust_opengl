@@ -6,7 +6,7 @@ uniform mat4 u_perspective;
 
 in vec4 position;
 in vec3 normal;
-in vec3 uvw;
+in vec3 uv;
 
 out vec3 v_position;
 out vec3 v_normal;
@@ -16,7 +16,7 @@ void main() {
   mat4 view_model = u_view * u_model;
   gl_Position = u_perspective * view_model * position;
   
-  v_uv       = vec2(uvw);
+  v_uv       = vec2(uv);
   v_normal   = transpose(inverse(mat3(view_model))) * normal;
   v_position = gl_Position.xyz / gl_Position.w;
   

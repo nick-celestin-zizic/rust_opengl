@@ -1,9 +1,15 @@
-use crate::glium::glutin as initgl;
-use crate::glium         as gl;
+pub extern crate glium;
+pub use glium::glutin as initgl;
+pub use glium         as gl;
 
-use crate::types::*;
+use crate::game::game_update_and_render;
 
-use gl::{Display, gl::program::Program};
+pub use crate::types::*;
+
+mod event_handler;
+use event_handler::*;
+
+use gl::{Display, program::Program};
 
 fn compile_shader (display : &Display, name : &str) -> Maybe<Program> {
     use regex::Regex;
@@ -25,8 +31,6 @@ fn compile_shader (display : &Display, name : &str) -> Maybe<Program> {
 
 
 pub fn main() -> Maybe<()> {
-    gl::implement_vertex!(Vertex, position, uvw, normal);
-
     let (display, event_loop) = {
         use initgl::{ event_loop::EventLoop,
                       window::WindowBuilder,
@@ -43,8 +47,18 @@ pub fn main() -> Maybe<()> {
         
         (display, event_loop)
     };
+
+    let params = gl::DrawParameters {
+        depth: gl::Depth {
+            test: gl::draw_parameters::DepthTest::IfLess,
+            write: true,
+            .. Default::default()
+        },
+        backface_culling : gl::draw_parameters::BackfaceCullingMode::CullClockwise,
+        .. Default::default()
+    };
     
-    let funny = Model::load("box", Matrix4::identity())?;
+    //let funny = Model::load("box", Matrix4::identity())?;
     let basic_shader = compile_shader(&display, "basic")?;
     
     let light : Vector3 = [-1.0, 0.4, 0.9];
@@ -61,12 +75,11 @@ pub fn main() -> Maybe<()> {
 
 
     // TODO change this to be smarter
-    use gl::{VertexBuffer, IndexBuffer, index::PrimitiveType::TrianglesList};
-    let vertex_buffer = VertexBuffer::new(&display, &funny.mesh.vertices)?;
-    let index_buffer  = IndexBuffer::new(&display,
-                                         TrianglesList,
-                                         &funny.mesh.indices)?;
-    let texture = {
+    /*
+    
+     */
+    //TODO more than one texture/palette
+    let palette = {
         let file = std::fs::File::open("data/textures/palette.png")?;
         let file = std::io::BufReader::new(file);
         let file = image::load(file, image::ImageFormat::Png)?.to_rgba8();
@@ -75,58 +88,28 @@ pub fn main() -> Maybe<()> {
 
         gl::texture::SrgbTexture2d::new(&display, image)?
     };
-    
 
-    //let mut t : f32 = 0.01;
+    //TODO better allocation
+    use std::collections::HashMap;
+    let mut meshes : Vec<Mesh> = Vec::with_capacity(20);
+    let mut vbos = HashMap::new();
+
+    gl::implement_vertex!(Vertex, position, uv, normal);
+
     event_loop.run(move |event, _, control_flow| {
-        use initgl::event_loop::ControlFlow::*;
-        use initgl::event::*;
+        use initgl::event_loop::ControlFlow::Poll;
 
         *control_flow = Poll;
 
-        #[allow(clippy::collapsible_match)]
-        #[allow(clippy::single_match)]
-        match event {
-            Event::WindowEvent {event, ..} => match event {
-                WindowEvent::CloseRequested => {
-                    *control_flow = Exit;
-                }
-                _ => ()
-            }
-            Event::DeviceEvent{event, ..} => match event {
-                DeviceEvent::Key(KeyboardInput{scancode, state, ..}) => {
-                    match state {
-                        ElementState::Pressed  => match scancode {
-                            1 => {
-                                *control_flow = Exit
-                            }
-                            _ => ()
-                        }
-                        
-                        ElementState::Released => ()
-                    }
-                }
-                _ => ()
-            }
-            _ => ()
-        }
-        
-        //t += 0.01;
+        handle_event(event, control_flow);
+
+        game_update_and_render(&mut meshes);
         
         use gl::Surface;
         let mut frame = display.draw();
         frame.clear_color_and_depth((0.0, 0.0, 0.0, 1.0), 1.0);
 
-        let params = gl::DrawParameters {
-            depth: gl::Depth {
-                test: gl::draw_parameters::DepthTest::IfLess,
-                write: true,
-                .. Default::default()
-            },
-            //backface_culling : gl::draw_parameters::BackfaceCullingMode::CullClockwise,
-            .. Default::default()
-        };
-
+        //TODO dont do this every frame
         let perspective = {
             let (width, height) = frame.get_dimensions();
             let aspect_ratio = height as f32 / width as f32;
@@ -143,16 +126,38 @@ pub fn main() -> Maybe<()> {
              [         0.0      , 0.0, -(2.0*zfar*znear)/(zfar-znear), 0.0]]
         };
 
-        frame.draw(&vertex_buffer,
-                   &index_buffer,
-                   &basic_shader,
-                   &gl::uniform! { u_model       : model,
-                                   u_view        : view,
-                                   u_perspective : perspective,
-                                   u_light       : light,
-                                   u_texture     : &texture },
-                   &params).expect("triangle fucked up");
+
+        for mesh in &meshes {
+            #[allow(clippy::map_entry)]
+            if !vbos.contains_key(&mesh.filename) {
+                use gl::{VertexBuffer, IndexBuffer,
+                         index::PrimitiveType::TrianglesList};
+                
+                let vertex_buffer = VertexBuffer::new(&display,
+                                                      &mesh.vertices)
+                    .unwrap_or_else(|_| panic!(
+                        "could not load vertex buffer for mesh '{}'",
+                        mesh.filename));
+                
+                let index_buffer  = IndexBuffer::new(&display,
+                                                     TrianglesList,
+                                                     &mesh.indices).unwrap();
+                vbos.insert(mesh.filename, (vertex_buffer, index_buffer));
+            }
+
+            let (vertices, indices) = vbos.get(mesh.filename).unwrap();
+            frame.draw(vertices, indices, &basic_shader,
+                       &gl::uniform! { u_model       : model,
+                                       u_view        : view,
+                                       u_perspective : perspective,
+                                       u_light       : light,
+                                       u_texture     : &palette },
+                       &params)
+                .unwrap_or_else(|_| panic!("could't not render mesh "));
+        }
+
         
-        frame.finish().expect("could not swap buffers");
+        
+        frame.finish().expect("COULD NOT SWAP BUFFERS");
     });
 }
