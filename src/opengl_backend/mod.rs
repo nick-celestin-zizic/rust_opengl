@@ -72,8 +72,8 @@ pub fn main() -> Maybe {
     //let funny = Model::load("box", Matrix4::identity())?;
     let basic_shader = compile_shader(&display, "basic")?;
 
-    let mut projection = Matrix4::default();
-
+    let projection = Matrix4::projection(
+        60.0, WINDOW_WIDTH as f32 / WINDOW_HEIGHT as f32, 1.0, 100.0);
 
     //TODO more than one texture/palette
     let palette = {
@@ -106,7 +106,7 @@ pub fn main() -> Maybe {
 
         *control_flow = Poll;
 
-        handle_event(&event, control_flow, &mut projection, &mut input);
+        handle_event(&event, control_flow, &mut input);
 
         if let MainEventsCleared = event {
             game_update_and_render(&mut state, &mut meshes, &mut input);

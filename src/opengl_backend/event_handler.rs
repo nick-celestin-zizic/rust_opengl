@@ -6,7 +6,6 @@ use initgl::{event_loop::ControlFlow::*,
 
 pub fn handle_event<T>(event:        &    Event<T>,
                        control_flow: &mut ControlFlow,
-                       projection:   &mut Matrix4,
                        input:        &mut Input) {
     #[allow(clippy::collapsible_match)]
     #[allow(clippy::single_match)]
@@ -15,12 +14,6 @@ pub fn handle_event<T>(event:        &    Event<T>,
             WindowEvent::CloseRequested => {
                 *control_flow = Exit;
             }
-            WindowEvent::Resized(size) => {
-                *projection =
-                    Matrix4::projection(60.0,
-                                        size.width as f32/size.height as f32,
-                                        1.0, 100.0);
-            },
             WindowEvent::CursorMoved{position, ..} => {
                 input.mouse[0] =
                     2.0 * ((position.x as f32)/(WINDOW_WIDTH as f32)) - 1.0;
