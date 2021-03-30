@@ -37,8 +37,8 @@ fn compile_shader (display: &gl::Display, name: &str) -> Maybe<gl::Program> {
 }
 
 
-pub const WINDOW_WIDTH:  u32 = 640;
-pub const WINDOW_HEIGHT: u32 = 480;
+pub const WINDOW_WIDTH:  u32 = 1280;
+pub const WINDOW_HEIGHT: u32 = 720;
 
 pub fn main() -> Maybe {
     let (display, event_loop) = {

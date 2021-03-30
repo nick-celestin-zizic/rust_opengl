@@ -54,8 +54,9 @@ pub fn draw_cube(id: u16, x: f32, y: f32, z: f32) -> Mesh {
 pub fn game_update_and_render(state:  &mut GameState,
                               meshes: &mut Meshes,
                               input:  &mut Input){
+    let mut id_gen = 0..;
     let first = {
-        let mut cube = draw_cube(0, -1.0, -1.0, 0.0);
+        let mut cube = draw_cube(id_gen.next().unwrap(), -1.0, -1.0, 0.0);
         cube.model_matrix.rotate_about_x(state.t);
         cube.model_matrix.scale(0.05, 0.05, 0.05);
         cube.model_matrix.translate(input.mouse[0],
@@ -64,7 +65,7 @@ pub fn game_update_and_render(state:  &mut GameState,
     };
 
     let second = {
-        let mut cube = draw_cube(1,  1.0, 0.0, 0.0);
+        let mut cube = draw_cube(id_gen.next().unwrap(),  1.0, 0.0, 0.0);
         cube.model_matrix.rotate_about_y(-state.t);
         cube.model_matrix.scale(0.5, 0.5, 0.5);
         cube.model_matrix.translate(0.0, 0.0, -5.0);
