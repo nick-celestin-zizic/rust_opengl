@@ -30,11 +30,13 @@ impl Mesh {
 
         //TODO this sucks do some slice shit 
         let vertices : Vec<Vertex> = v_vt_vn.iter()
-            .map(|(v, vt, _vn)|
+            .map(|(v, vt, vn)|
                  Vertex {
                      position: [v.0, v.1, v.2, v.3],
-                     uv: [vt.0, vt.1, vt.2]})
-                     //normal: [vn.0, vn.1, vn.2]})
+                     uv: [vt.0, vt.1, vt.2],
+                     normal: [vn.0, vn.1, vn.2],
+                     color: [0.0, 0.0, 0.0, 0.0]
+                 })
             .collect();
 
 

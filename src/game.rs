@@ -1,25 +1,35 @@
 use crate::types::*;
+
+#[derive(Default)]
 pub struct GameState {
-    should_quit: bool,
-    t: f32,
+    pub should_quit: bool,
+    pub camera:      Matrix4,
+    pub t:           f32,
 }
 
-impl GameState {
-    pub fn init() -> Self {
-        GameState{should_quit: false, t: 0.0}
-    }
+#[derive(Default, Debug)]
+pub struct Input {
+    pub mouse: Vector2
 }
 
 pub fn draw_cube(id: u16, x: f32, y: f32, z: f32) -> Mesh {
     let vertices : Vec<Vertex> = vec! [
-        Vertex { position: [-1.0, -1.0,  1.0, 1.0], uv: [0.0, 0.0, 1.0] },
-        Vertex { position: [-1.0,  1.0,  1.0, 1.0], uv: [1.0, 0.0, 0.0] },
-        Vertex { position: [ 1.0,  1.0,  1.0, 1.0], uv: [0.0, 1.0, 0.0] },
-        Vertex { position: [ 1.0, -1.0,  1.0, 1.0], uv: [1.0, 1.0, 0.0] },
-        Vertex { position: [-1.0, -1.0, -1.0, 1.0], uv: [1.0, 1.0, 1.0] },
-        Vertex { position: [-1.0,  1.0, -1.0, 1.0], uv: [1.0, 0.0, 0.0] },
-        Vertex { position: [ 1.0,  1.0, -1.0, 1.0], uv: [1.0, 0.0, 1.0] },
-        Vertex { position: [ 1.0, -1.0, -1.0, 1.0], uv: [0.0, 0.0, 1.0] },
+        Vertex { position: [-1.0, -1.0,  1.0, 1.0],
+                 color:    [ 0.0,  0.0,  1.0, 1.0], .. Default::default() },
+        Vertex { position: [-1.0,  1.0,  1.0, 1.0],
+                 color:    [ 1.0,  0.0,  0.0, 1.0], .. Default::default() },
+        Vertex { position: [ 1.0,  1.0,  1.0, 1.0],
+                 color:    [ 0.0,  1.0,  0.0, 1.0], .. Default::default() },
+        Vertex { position: [ 1.0, -1.0,  1.0, 1.0],
+                 color:    [ 1.0,  1.0,  0.0, 1.0], .. Default::default() },
+        Vertex { position: [-1.0, -1.0, -1.0, 1.0],
+                 color:    [ 1.0,  1.0,  1.0, 1.0], .. Default::default() },
+        Vertex { position: [-1.0,  1.0, -1.0, 1.0],
+                 color:    [ 1.0,  0.0,  0.0, 1.0], .. Default::default() },
+        Vertex { position: [ 1.0,  1.0, -1.0, 1.0],
+                 color:    [ 1.0,  0.0,  1.0, 1.0], .. Default::default() },
+        Vertex { position: [ 1.0, -1.0, -1.0, 1.0],
+                 color:    [ 0.0,  0.0,  1.0, 1.0], .. Default::default() },
     ];
     
     let indices = vec! [
@@ -41,25 +51,28 @@ pub fn draw_cube(id: u16, x: f32, y: f32, z: f32) -> Mesh {
     Mesh {vertices, indices, model_matrix, id}
 }
 
-pub fn game_update_and_render(state: &mut GameState,
-                              meshes: &mut Meshes){
+pub fn game_update_and_render(state:  &mut GameState,
+                              meshes: &mut Meshes,
+                              input:  &mut Input){
     let first = {
         let mut cube = draw_cube(0, -1.0, -1.0, 0.0);
         cube.model_matrix.rotate_about_x(state.t);
-        cube.model_matrix.scale(0.5, 0.5, 0.5);
+        cube.model_matrix.scale(0.05, 0.05, 0.05);
+        cube.model_matrix.translate(input.mouse[0],
+                                    -input.mouse[1], -1.1);
         cube
     };
+
     let second = {
         let mut cube = draw_cube(1,  1.0, 0.0, 0.0);
         cube.model_matrix.rotate_about_y(-state.t);
         cube.model_matrix.scale(0.5, 0.5, 0.5);
+        cube.model_matrix.translate(0.0, 0.0, -5.0);
         cube
     };
     
     meshes.insert(first.id, first);
     meshes.insert(second.id, second);
 
-
     state.t += 0.008;
-
 }

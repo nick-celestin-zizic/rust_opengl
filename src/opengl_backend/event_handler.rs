@@ -4,9 +4,10 @@ use initgl::{event_loop::ControlFlow::*,
              event_loop::ControlFlow,
              event::*};
 
-pub fn handle_event<T>(event:             Event<T>,
+pub fn handle_event<T>(event:        &    Event<T>,
                        control_flow: &mut ControlFlow,
-                       projection:   &mut Matrix4) {
+                       projection:   &mut Matrix4,
+                       input:        &mut Input) {
     #[allow(clippy::collapsible_match)]
     #[allow(clippy::single_match)]
     match event {
@@ -19,6 +20,12 @@ pub fn handle_event<T>(event:             Event<T>,
                     Matrix4::projection(60.0,
                                         size.width as f32/size.height as f32,
                                         1.0, 100.0);
+            },
+            WindowEvent::CursorMoved{position, ..} => {
+                input.mouse[0] =
+                    2.0 * ((position.x as f32)/(WINDOW_WIDTH as f32)) - 1.0;
+                input.mouse[1] =
+                    2.0 * ((position.y as f32)/(WINDOW_HEIGHT as f32)) - 1.0;
             }
             _ => ()
         }
@@ -31,10 +38,11 @@ pub fn handle_event<T>(event:             Event<T>,
                         }
                         _ => ()
                     }
-                    ElementState::Released => ()
+                    ElementState::Released => (),
                 }
-            }
+            },
             _ => ()
+
         }
         _ => ()
     }
