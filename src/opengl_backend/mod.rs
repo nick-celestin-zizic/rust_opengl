@@ -15,6 +15,16 @@ use gl::{
         DepthTest::IfLess,
     }
 };
+use initgl::{
+    event::Event::MainEventsCleared,
+    event_loop::{
+        ControlFlow,
+        ControlFlow::{Poll, Exit}
+    }
+};
+
+use hidapi::HidDevice;
+
 
 fn compile_shader (display: &gl::Display, name: &str) -> Maybe<gl::Program> {
     use regex::Regex;
@@ -102,56 +112,31 @@ pub fn main() -> Maybe {
     };
 
     // controller stuff
-    let api = hidapi::HidApi::new().unwrap();
-    for device in api.device_list() {
-        println!("vid: {:x}\t pid: {:x}",
-                 device.vendor_id(), device.product_id());
-    }
-    //panic!();
+    let hid_api = hidapi::HidApi::new().unwrap();
+
     let controller_handle : Option<hidapi::HidDevice> = {
-        if let Some(info) = api.device_list().next() {
+        
+        if let Some(info) = hid_api.device_list().next() {
             input.controller = Some(Controller::default());
-            let handle = api.open(info.vendor_id(), info.product_id())
+            
+            let handle = hid_api.open(info.vendor_id(), info.product_id())
                 .unwrap();
-            handle.set_blocking_mode(true)?;
+            handle.set_blocking_mode(false)?;
             Some(handle)
         } else { None }
     };
     
     event_loop.run(move |event, _, control_flow| {
-        use initgl::event_loop::ControlFlow::Poll;
-        use initgl::event::Event::MainEventsCleared;
-
         *control_flow = Poll;
         
         handle_event(&event, control_flow, &mut input);
         if let Some(handle) = &controller_handle {
-            let mut controller = input.controller.as_mut().unwrap();
-            let mut buff       = [0u8; 10];
-            
-            handle.read(&mut buff[..]).unwrap();
-            
-            controller.buttons = (buff[2] as u16) << 8 | buff[3] as u16;
-            use crate::util::{normalize, deadzone};
-            controller.left_stick  = [
-                deadzone(
-                    normalize(buff[6] as f32, 0.0, 255.0, -1.0, 1.0),
-                    0.1),
-                deadzone(
-                    normalize(buff[7] as f32, 0.0, 255.0, -1.0, 1.0),
-                    0.1),
-            ];
-            println!("{}\t{}", buff[8], buff[9]);
-            controller.right_stick  = [
-                deadzone(
-                    normalize(buff[8] as f32, 0.0, 255.0, -1.0, 1.0),
-                    0.1),
-                deadzone(
-                    normalize(buff[9] as f32, 0.0, 255.0, -1.0, 1.0),
-                    0.1),
-            ];
+            poll_controller(handle,
+                            input.controller.as_mut().unwrap(),
+                            control_flow);
         }
         if let MainEventsCleared = event {
+            
             game_update_and_render(&mut state, &mut meshes, &mut input);
             
             let mut frame = display.draw();
@@ -184,4 +169,45 @@ pub fn main() -> Maybe {
         };
     });
 
+}
+
+fn poll_controller(handle:       &    HidDevice,
+                   controller:   &mut Controller,
+                   control_flow: &mut ControlFlow) {
+    let mut buff = [0u8; 10];
+    handle.read(&mut buff[..]).unwrap();
+    
+    if buff[0] == 0 {
+        // no data was read
+        return;
+    }
+
+    if buff[1] != 0 {
+        println!("WTFFFFFFFFFF");
+    }
+
+    controller.buttons = (buff[2] as u16) << 8 | buff[3] as u16;
+
+    if buff[4] == 1 {
+        *control_flow = Exit;
+    }
+    
+    use crate::util::{normalize, deadzone};
+    controller.left_stick  = [
+        deadzone(
+            normalize(buff[6] as f32, 0.0, 255.0, -1.0, 1.0),
+            0.1),
+        deadzone(
+            normalize(buff[7] as f32, 0.0, 255.0, -1.0, 1.0),
+            0.1),
+    ];
+    
+    controller.right_stick  = [
+        deadzone(
+            normalize(buff[8] as f32, 0.0, 255.0, -1.0, 1.0),
+            0.1),
+        deadzone(
+            normalize(buff[9] as f32, 0.0, 255.0, -1.0, 1.0),
+            0.1),
+    ];
 }
