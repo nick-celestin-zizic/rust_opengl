@@ -23,19 +23,22 @@ pub fn handle_event<T>(event:        &    Event<T>,
             _ => ()
         }
         Event::DeviceEvent{event, ..} => match event {
-            DeviceEvent::Key(KeyboardInput{scancode, state, ..}) => {
-                match state {
-                    ElementState::Pressed  => match scancode {
-                        1 => {
-                            *control_flow = Exit
-                        }
-                        _ => ()
+            DeviceEvent::Key(KeyboardInput{scancode, state, ..}) => { match state {
+                ElementState::Pressed  => match scancode {
+                    1 => {
+                        *control_flow = Exit
                     }
-                    ElementState::Released => (),
+                    _ => ()
+                }
+                ElementState::Released => (),
+            }},
+            DeviceEvent::MouseWheel{delta} => {
+                if let MouseScrollDelta::LineDelta(x, y) = delta{
+                    input.scroll[0] += x;
+                    input.scroll[1] += y;
                 }
             },
             _ => ()
-
         }
         _ => ()
     }

@@ -1,6 +1,5 @@
 pub use glium::glutin as initgl;
 pub use glium         as gl;
-
 use crate::game::*;
 
 pub use crate::types::*;
@@ -53,7 +52,8 @@ pub fn main() -> Maybe {
             .with_inner_size(PhysicalSize::new(WINDOW_WIDTH, WINDOW_HEIGHT))
             .with_resizable(false);
         let context = ContextBuilder::new()
-            .with_depth_buffer(24);
+            .with_depth_buffer(24)
+            .with_vsync(true);
         let display = gl::Display::new(window, context, &event_loop)?;
         
         (display, event_loop)
@@ -81,7 +81,8 @@ pub fn main() -> Maybe {
         let file = std::io::BufReader::new(file);
         let file = image::load(file, image::ImageFormat::Png)?.to_rgba8();
         let dimensions = file.dimensions();
-        let image = gl::texture::RawImage2d::from_raw_rgba_reversed(&file.into_raw(), dimensions);
+        let image = gl::texture::RawImage2d::from_raw_rgba_reversed(
+            &file.into_raw(), dimensions);
 
         gl::texture::SrgbTexture2d::new(&display, image)?
     };
@@ -93,11 +94,28 @@ pub fn main() -> Maybe {
     gl::implement_vertex!(Vertex, position, color, normal, uv);
 
     let mut meshes : HashMap<u16, Mesh> = HashMap::new();
-
+    
     let mut input = Input::default();
     let mut state = GameState {
         camera: Matrix4::identity(),
         .. Default::default()
+    };
+
+    // controller stuff
+    let api = hidapi::HidApi::new().unwrap();
+    for device in api.device_list() {
+        println!("vid: {:x}\t pid: {:x}",
+                 device.vendor_id(), device.product_id());
+    }
+    //panic!();
+    let controller_handle : Option<hidapi::HidDevice> = {
+        if let Some(info) = api.device_list().next() {
+            input.controller = Some(Controller::default());
+            let handle = api.open(info.vendor_id(), info.product_id())
+                .unwrap();
+            handle.set_blocking_mode(true)?;
+            Some(handle)
+        } else { None }
     };
     
     event_loop.run(move |event, _, control_flow| {
@@ -105,9 +123,34 @@ pub fn main() -> Maybe {
         use initgl::event::Event::MainEventsCleared;
 
         *control_flow = Poll;
-
+        
         handle_event(&event, control_flow, &mut input);
-
+        if let Some(handle) = &controller_handle {
+            let mut controller = input.controller.as_mut().unwrap();
+            let mut buff       = [0u8; 10];
+            
+            handle.read(&mut buff[..]).unwrap();
+            
+            controller.buttons = (buff[2] as u16) << 8 | buff[3] as u16;
+            use crate::util::{normalize, deadzone};
+            controller.left_stick  = [
+                deadzone(
+                    normalize(buff[6] as f32, 0.0, 255.0, -1.0, 1.0),
+                    0.1),
+                deadzone(
+                    normalize(buff[7] as f32, 0.0, 255.0, -1.0, 1.0),
+                    0.1),
+            ];
+            println!("{}\t{}", buff[8], buff[9]);
+            controller.right_stick  = [
+                deadzone(
+                    normalize(buff[8] as f32, 0.0, 255.0, -1.0, 1.0),
+                    0.1),
+                deadzone(
+                    normalize(buff[9] as f32, 0.0, 255.0, -1.0, 1.0),
+                    0.1),
+            ];
+        }
         if let MainEventsCleared = event {
             game_update_and_render(&mut state, &mut meshes, &mut input);
             

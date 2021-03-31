@@ -10,5 +10,6 @@ edition = "2018"
 regex = "1.4.3"
 glium = "0.29.0"
 model_parser = {package = "nom-obj", git = "https://github.com/dwerner/nom-obj", version = "0.2.0"}
+hidapi = "1.2.5"
 image = "0.23.10"
 
